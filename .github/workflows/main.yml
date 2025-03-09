@@ -15,7 +15,7 @@ jobs:
         port: 21
         username: f11818_miavaka
         password: 1027Miavaka
-        server-dir: ./domains/usertest.serv00.net/public_html/simulation_eolienne
+        server-dir: ./domains/usertest.serv00.net/public_html/simulation_eolienne/
         local-dir: ./
         
     - name: 📂 Sync files to server Nofidiana 
