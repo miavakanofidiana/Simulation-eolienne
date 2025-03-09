@@ -1,4 +1,3 @@
-
 function setVisibility(isVisible, ...objects) {
     objects.forEach(object => {
         object.visible = isVisible;
@@ -76,9 +75,118 @@ scene.background = new THREE.Color(0xB7CEEB);
     ground.position.y = -10;
     //scene.add(ground);
 
-// Load the font and create the text
-const lcd_font = new THREE.Font(Times);
+// Load the font 
 const TimesFont = new THREE.Font(Times);
+const availableChars  = "aàâäbcdeéèëêfghiîïjklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,-()/=' \n\s";
+const SPACE_RATIO = 0.35;
+const TEXT_RESOLUTION = 4;
+// 2. Créer le cache des géométries
+const geometryCache = {};
+function getCharGeometry(char, size) {
+    // Crée l'entrée si elle n'existe pas
+    if (!geometryCache[char]) geometryCache[char] = {};
+    
+    // Génère la géométrie si nécessaire
+    if (!geometryCache[char][size]) {
+        const geom = new THREE.TextGeometry(char, {
+            size: size,
+            font: TimesFont,
+            height: 0.2,
+        depth: 0.1,
+        curveSegments: 32,
+        bevelEnabled: false,
+        bevelThickness: 0.5,
+        bevelSize: 0.5,
+        bevelSegments: 1,
+        });
+        
+        geom.computeBoundingBox();
+        const scaleFactor = 1;
+        let width;
+        if (char == ' ') {
+            width = size*SPACE_RATIO;
+        } else {
+            width = geom.boundingBox ? geom.boundingBox.max.x - geom.boundingBox.min.x : size * 0.5;
+        }
+        /* if (char !== ' ' && geom.vertices.length == 0) {
+            console.warn(`Empty geomtry for : ${char}`);
+        } */
+        geometryCache[char][size] = {
+            geometry: geom,
+            width: width
+        };
+    }
+    
+    return geometryCache[char][size];
+}
+
+// 3. Fonction de création de texte optimisé
+function createOptimizedText(text, material, baseSize = 2) {
+    const textGroup = new THREE.Group();
+    let cursor = 0;
+
+    for (const char of text) {
+        if (!availableChars.includes(char)) continue;
+
+        // Récupère la géométrie avec la taille désirée
+        const { geometry, width } = getCharGeometry(char, baseSize);
+        
+        const charMesh = new THREE.Mesh(geometry, material);
+        charMesh.position.x = cursor;
+        textGroup.add(charMesh);
+
+        if (char == 1) {
+            cursor += width * 1.95; // Espacement +5%
+        } else {
+            cursor += width * 1.10; // Espacement +5%
+        }
+    }
+
+    return textGroup;
+}
+
+function createMixedSizeText(textParts, material) {
+    const group = new THREE.Group();
+    let currentX = 0;
+
+    for (const part of textParts) {
+        const textMesh = createText(part.text, material, part.size);
+        textMesh.position.x = currentX;
+        group.add(textMesh);
+        
+        // Met à jour la position pour le prochain élément
+        textMesh.traverse((child) => {
+            if (child.isMesh) {
+                currentX += child.geometry.boundingBox.max.x;
+            }
+        });
+    }
+
+    return group;
+}
+
+/*
+// Exemple d'utilisation :
+const textParts = [
+    { text: "Grand ", size: 24 },
+    { text: "moyen ", size: 18 },
+    { text: "petit", size: 12 }
+];
+
+const mixedText = createMixedSizeText(textParts, material);
+scene.add(mixedText);*/
+
+function preloadSizes(sizes) {
+    for (const char of availableChars) {
+        for (const size of sizes) {
+            getCharGeometry(char, size);
+        }
+    }
+}
+
+// Appeler avant initScene()
+preloadSizes([2, 1, ]);
+
 
 
 //Legendes
@@ -270,6 +378,22 @@ alternateurGround.userData.onclick = function() {
 scene.add(alternateurGround);
 
 function createText(text, size=2, color='black', font= TimesFont,) {
+    
+    // Create a standard material with 50% gloss
+    const material = new THREE.MeshStandardMaterial({
+        color: color,
+        roughness: 0.1
+    });
+    
+    // Geometries are attached to meshes so that they get rendered
+    const textMesh = createOptimizedText(text, material, size);
+    // Update positioning of the text
+   
+    scene.add(textMesh);
+    return textMesh;
+}
+
+function createTextOLD(text, size=2, color='black', font= TimesFont,) {
     const textGeometry = new TextGeometry(text, {
         font: font,
         size: size,
@@ -360,7 +484,7 @@ tower0.position.set(-30, 11, 0);
 tower0.userData.tooltipText = matTooltipText;
 scene.add(tower0);
 
-createText("Vue de \nprofil").position.set(-40, 0, 4);
+createText("Vue de profil").position.set(-40, 0, 4);
 
 // Create nacelle
 const nacelle0 = new THREE.Mesh(nacelleGeometry, nacelleMaterial);
@@ -682,8 +806,8 @@ function updateSimulation() {
     } else if (powerUnit == "MW") {
         power_ = power.toFixed(3);
     }
-    const ptTextGeometry = new TextGeometry(Number.parseFloat(power_).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' '+powerUnit, {
-        font: lcd_font,
+    /* const ptTextGeometry = new TextGeometry(Number.parseFloat(power_).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' '+powerUnit, {
+        font: TimesFont,
         size: 2,
         depth: 0.1,
         curveSegments: 32,
@@ -691,7 +815,7 @@ function updateSimulation() {
         bevelThickness: 0.5,
         bevelSize: 0.5,
         bevelSegments: 1,
-    });
+    }); */
 
     // Create a standard material with 50% gloss
     const ptTextMaterial = new THREE.MeshStandardMaterial({
@@ -706,8 +830,8 @@ function updateSimulation() {
         max_power_ = max_power.toFixed(3);
     }
     
-    const pMaxTextGeometry = new TextGeometry(Number.parseFloat(max_power_).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' '+powerUnit, {
-        font: lcd_font,
+    /* const pMaxTextGeometry = new TextGeometry(Number.parseFloat(max_power_).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' '+powerUnit, {
+        font: TimesFont,
         size: 2,
         depth: 0.1,
         curveSegments: 32,
@@ -715,7 +839,7 @@ function updateSimulation() {
         bevelThickness: 0.5,
         bevelSize: 0.5,
         bevelSegments: 1,
-    });
+    }); */
 
     // Create a standard material with 50% gloss
     const pMaxTextMaterial = new THREE.MeshStandardMaterial({
@@ -733,24 +857,30 @@ function updateSimulation() {
 
         if (true || (windSpeed >= windSpeedLowNorm && windSpeed <= windSpeedHighNorm)) {
             // Geometries are attached to meshes so that they get rendered
-            pTtextMesh = new THREE.Mesh(ptTextGeometry, ptTextMaterial);
+            //pTtextMesh = new THREE.Mesh(ptTextGeometry, ptTextMaterial);
+            pTtextMesh = createOptimizedText(Number.parseFloat(power_).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' '+powerUnit, ptTextMaterial, 2);
             // Update positioning of the text
             pTtextMesh.position.set(-15, -10, 3);
             scene.add(pTtextMesh);
 
-            pMaxTextMesh = new THREE.Mesh(pMaxTextGeometry, pMaxTextMaterial);
+            //pMaxTextMesh = new THREE.Mesh(pMaxTextGeometry, pMaxTextMaterial);
+            pMaxTextMesh = createOptimizedText(Number.parseFloat(max_power_).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' '+powerUnit, pMaxTextMaterial);
             // Update positioning of the text
             pMaxTextMesh.position.set(-14, -20, 3);
             scene.add(pMaxTextMesh);
 
             if(nombre_tour_par_minute_pales != last_nombre_tour_par_minute_pales) {
+                scene.remove(pales_text);
                 last_nombre_tour_par_minute_pales = nombre_tour_par_minute_pales;
-                pales_text.geometry = createTextGeometry("(rotation "+nombre_tour_par_minute_pales.toFixed(1)+" tours/min)", 1.5);
+                pales_text = createText("(rotation "+nombre_tour_par_minute_pales.toFixed(1)+" tours/min)", 1.5);
+                pales_text.position.set(leg_x+19, leg_y-2, leg_z);
             }
 
             if(nombre_tour_par_minute_multip != last_nombre_tour_par_minute_multip) {
+                scene.remove(multip_text);
                 last_nombre_tour_par_minute_multip = nombre_tour_par_minute_multip;
-                multip_text.geometry = createTextGeometry("(rotation "+nombre_tour_par_minute_multip.toFixed(1)+" tours/min)", 1.5);
+                multip_text = createText("(rotation "+nombre_tour_par_minute_multip.toFixed(1)+" tours/min)", 1.5);
+                multip_text.position.set(leg_x+19, leg_y-2-leg_dist*2, leg_z);
             }
         }
 
@@ -1261,3 +1391,4 @@ document.addEventListener('click', (event) => {
 
 updateSimulation();
 animate(0);
+document.getElementById('splashscreen').style.display = "none"; 

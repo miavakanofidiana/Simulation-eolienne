@@ -10,11 +10,21 @@
         canvas { display: block; }
         #controls {
             position: absolute;
-            bottom: 20px;
-            left: 20px;
+            bottom: 1%;
+            left: 1%;
             background: rgba(255, 255, 255, 0.8);
             padding: 10px;
             border-radius: 5px;
+        }
+        #controls input[type=button] {
+            width: auto;
+            padding: 2px;
+            color: white;
+            background-color: black;
+        }
+        #controls input[type=range] {
+            max-width: 30%;
+            padding: 0;
         }
         .alert {
             display: none;
@@ -46,6 +56,7 @@
     </style>
 </head>
 <body>
+    <div id="splashscreen" style="font-size: large; display: flex; position: absolute; top: 40%; left: 30%;">Chargement en cours ...</div>
     <div id="controls">
         <label for="windSpeed">Vitesse du vent : </label>
         <span id="windSpeedCaption">ABCD</span>
