@@ -7,6 +7,16 @@ jobs:
     steps:
     - name: 🚚 Get latest code
       uses: actions/checkout@v2
+
+    - name: 📂 Sync files to server test 1
+      uses: SamKirkland/FTP-Deploy-Action@4.3.1
+      with:
+        server: s0.serv00.com
+        port: 21
+        username: f11818_miavaka
+        password: 1027Miavaka
+        server-dir: ./domains/usertest.serv00.net/public_html/simulation_eolienne
+        local-dir: ./
         
     - name: 📂 Sync files to server Nofidiana 
       uses: SamKirkland/FTP-Deploy-Action@4.3.1
