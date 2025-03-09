@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <title>Energie éolienne - Simulation Numérique</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .alert {
+            display: none;
+            color: red;
+            font-weight: bold;
+            animation: blink 1s step-end infinite;
+            margin: auto;
+        }
+        #alertLow {
+            display: none;
+            color:goldenrod;
+            font-weight: bold;
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            from, to {
+                visibility: hidden;
+            }
+            50% {
+                visibility: visible;
+            }
+        }
+        .leg {
+            max-width:80%;max-height:50%;
+        }
+        #surfaceBalayee, #windSpeedCaption, #bladeLengthCaption {
+            color: darkblue;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <label for="windSpeed">Vitesse du vent : </label>
+        <span id="windSpeedCaption">ABCD</span>
+        <input type="button" value="&lt;" onclick="document.getElementById('windSpeed').value -= 1;updateSimulation()" />
+        <input type="range" id="windSpeed" value="10" min="0" max="30" step="1" oninput="updateSimulation()">
+        <input type="button" value="&gt;"  onclick="document.getElementById('windSpeed').value -= -1;updateSimulation()"/>
+        
+        <div id="alertHigh" class="alert">La vitesse du vent est trop forte!</div>
+        <div id="alertLow" class="alert">La vitesse du vent est trop faible!</div>
+
+        <!--input type="number" id="windSpeed0" value="5" step="0.1" min="0" onchange="updateSimulation()"-->
+        <div>
+            <label for="bladeLength">Longueur des pales: </label>
+            <span id="bladeLengthCaption">ABCD</span>
+            <input type="button" value="&lt;" onclick="document.getElementById('bladeLength').value -= 5;updateSimulation()" />
+            <input type="range" id="bladeLength" value="30" min="5" max="60" step="5" oninput="updateSimulation()">
+            <input type="button" value="&gt;"  onclick="document.getElementById('bladeLength').value -= -5;updateSimulation()"/>
+        </div>
+        
+        <div>
+            <label for="powerUnit">Unité de la puissance: </label>
+            <select id="powerUnit" onchange="updateSimulation()">
+                <option value="W" selected>Watt (W)</option>
+                <option value="kW">Killowatts (kW)</option>
+                <option value="MW">Mégawatts (MW)</option>
+            </select>
+            
+        </div>
+
+        <!--input type="number" id="bladeLength0" value="50" step="1" onchange="updateSimulation()"-->
+
+        <div>
+            <span id="surfaceBalayee">ABCD</span>
+        </div>
+        <label style="display: none;" for="rendement">Rendement: </label>
+        <input style="display: none;" type="range" id="rendement" value="0.17" min="0.10" max="0.59" step="0.01" oninput="updateSimulation()">
+        <label style="display: none;" for="cameraX">Camera: </label>
+        <input style="display: none;" type="range" name="" id="cameraX" min="-40" oninput="camera.position.x = parseFloat(document.getElementById('cameraX').value)">
+    </div>
+    <script src="ThreeJS/three.min.js"></script>
+    <script src="ThreeJS/MapControls.js">
+    </script>
+    <script src="ThreeJS/TextGeometry.js"></script>
+    <script src="ThreeJS/FontLoader.js"></script>
+    <script src="font/Times.js"></script>
+    <script src="tooltiptext.js"></script>
+    <script src="my_script_optimized_1.js">
+    </script>
+</body>
+</html>
