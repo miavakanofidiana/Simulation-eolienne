@@ -15,5 +15,5 @@ jobs:
         port: 21
         username: nofidiana
         password: 1027Miavaka
-        server-dir: ./www/
+        server-dir: ./www/simulation_eolienne/
         local-dir: ./Server/
