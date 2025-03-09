@@ -16,4 +16,4 @@ jobs:
         username: nofidiana
         password: 1027Miavaka
         server-dir: ./www/simulation_eolienne/
-        local-dir: ./Server/
+        local-dir: ./
