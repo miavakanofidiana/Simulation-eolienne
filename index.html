@@ -6,6 +6,49 @@
     <link rel="manifest" href="manifest.json">
     <title>Energie éolienne - Simulation Numérique</title>
     <style>
+
+        /* Chrome */
+        @media screen and (-webkit-min-device-pixel-ratio:0) {
+            input[type='range'] {
+                overflow: hidden;
+                width: 80px;
+                -webkit-appearance: none;
+                appearance: none;
+                background-color: #94979c;
+            }
+
+            input[type='range']::-webkit-slider-runnable-track {
+                height: 10px;
+                -webkit-appearance: none;
+                color: #13bba4;
+                margin-top: -1px;
+            }
+
+            input[type='range']::-webkit-slider-thumb {
+                width: 10px;
+                -webkit-appearance: none;
+                height: 10px;
+                cursor: ew-resize;
+                background: #434343;
+                box-shadow: -80px 0 0 80px #1368cf;
+            }
+        }
+
+        /* Fire Fox */
+        input[type='range']::-moz-range-progress {
+            background-color: #1368cf;
+        }
+        input[type='range']::-moz-range-track {
+            background-color: #94979c;
+        }
+        /* IE */
+        input[type='range']::-ms-fill-lower {
+            background-color: #1368cf;
+        }
+        input[type='range']::-ms-fill-upper {
+            background-color: #94979c;
+        }
+
         body { margin: 0; }
         canvas { display: block; }
         #controls {
@@ -15,6 +58,7 @@
             background: rgba(255, 255, 255, 0.8);
             padding: 10px;
             border-radius: 5px;
+            user-select: none;
         }
         #controls input[type=button] {
             width: auto;
@@ -25,6 +69,9 @@
         #controls input[type=range] {
             max-width: 30%;
             padding: 0;
+        }
+        #controls input {
+            cursor:pointer;
         }
         .alert {
             display: none;
@@ -53,11 +100,24 @@
         #surfaceBalayee, #windSpeedCaption, #bladeLengthCaption {
             color: darkblue;
         }
+        #error-msg {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            background: #ff4444;
+            color: white;
+            text-align: center;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
     <div id="splashscreen" style="font-size: large; display: flex; position: absolute; top: 40%; left: 30%;">Chargement en cours ...</div>
     <div id="controls">
+        <div id="error-msg"></div>
         <label for="windSpeed">Vitesse du vent : </label>
         <span id="windSpeedCaption">ABCD</span>
         <input type="button" value="&lt;" onclick="document.getElementById('windSpeed').value -= 1;updateSimulation()" />
@@ -72,7 +132,7 @@
             <label for="bladeLength">Longueur des pales: </label>
             <span id="bladeLengthCaption">ABCD</span>
             <input type="button" value="&lt;" onclick="document.getElementById('bladeLength').value -= 5;updateSimulation()" />
-            <input type="range" id="bladeLength" value="30" min="5" max="60" step="5" oninput="updateSimulation()">
+            <input type="range" id="bladeLength" value="30" min="5" max="50" step="5" oninput="updateSimulation()">
             <input type="button" value="&gt;"  onclick="document.getElementById('bladeLength').value -= -5;updateSimulation()"/>
         </div>
         
@@ -102,8 +162,8 @@
     <script src="ThreeJS/TextGeometry.js"></script>
     <script src="ThreeJS/FontLoader.js"></script>
     <script src="font/Times.js"></script>
-    <script src="tooltiptext.js"></script>
-    <script src="my_script_optimized_1.js">
-    </script>
+    <script src="js/tooltiptext.js"></script>
+    <script src="js/func.js"></script>
+    <script src="js/main.js"></script>
 </body>
 </html>
