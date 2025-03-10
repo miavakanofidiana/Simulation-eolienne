@@ -9,7 +9,7 @@ jobs:
       uses: actions/checkout@v2
 
     - name: 📂 Sync files to server test 1
-      uses: SamKirkland/FTP-Deploy-Action@4.3.1
+      uses: SamKirkland/FTP-Deploy-Action@4.3.5
       with:
         server: s0.serv00.com
         port: 21
@@ -19,7 +19,7 @@ jobs:
         local-dir: ./
         
     - name: 📂 Sync files to server Nofidiana 
-      uses: SamKirkland/FTP-Deploy-Action@4.3.1
+      uses: SamKirkland/FTP-Deploy-Action@4.3.5
       with:
         server: ftp-nofidiana.alwaysdata.net
         port: 21
