@@ -278,7 +278,7 @@
 <body>
     <div id="splashscreen" style="font-size: large; display: flex; position: absolute; top: 40%; left: 30%;">Chargement en cours ... </div>
     <div class="result_fermer" style="display: none;" id="result_fermer">
-        <span style="position:absolute; padding:1px; text-align:center; cursor:pointer; color:red; right:10px; top:0px;" onclick="document.querySelector('.result_fermer').style.display = 'none';">x Fermer</span>
+        <span data-clickable style="position:absolute; padding:1px; text-align:center; cursor:pointer; color:red; right:10px; top:0px;" onclick="document.querySelector('.result_fermer').style.display = 'none';">x Fermer</span>
         <div class="result" style="text-align: left;"></div>
     </div>
     
@@ -429,7 +429,7 @@
             position: absolute;
             background-color: white;
             z-index: 200;
-            width: 500px;
+            width: 600px;
             display: none;
         }
 
@@ -440,21 +440,7 @@
 
         @media (max-width: 600px) {
             #courbe {
-                max-width: 400px;
-                height: auto;
-            }
-        }
-
-        @media (max-width: 320px) {
-            #courbe {
-                max-width: 300px;
-                height: auto;
-            }
-        }
-
-        @media (max-width: 480px) {
-            #courbe {
-                max-width: 300px;
+                width: 100%;
                 height: auto;
             }
         }

@@ -24,10 +24,6 @@ let typingInterval;
         }
 
         function updateCalculation() {
-            if (pTtextMesh) {
-                scene.remove(pTtextMesh);
-                scene.remove(pMaxTextMesh);
-            }
             timeoutIds.forEach(clearTimeout);
             timeoutIds = [];
             
@@ -79,6 +75,7 @@ let typingInterval;
             power_text = Number.parseFloat(power_).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' '+powerUnit;
             if (!calculationIsVisible()) {
                 showSceneTexts(power_text, power);
+                return;
             }
 
             const resultDiv = document.querySelector('.result');
@@ -136,6 +133,10 @@ let typingInterval;
         }
 
         function showSceneTexts(power_text, power) {
+            if (pTtextMesh) {
+                scene.remove(pTtextMesh);
+                scene.remove(pMaxTextMesh);
+            }
             const ptTextMaterial = new THREE.MeshStandardMaterial({
                 color: pth_color,
                 roughness: 0.1
