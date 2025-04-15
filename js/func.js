@@ -117,7 +117,7 @@ function preloadSizes(sizes) {
 }
 
 
-function createText(text, size=2, color='black') {
+function createText(text, size=2, color='black', mScene = scene) {
     
     // Create a standard material with 50% gloss
     const material = new THREE.MeshStandardMaterial({
@@ -129,7 +129,22 @@ function createText(text, size=2, color='black') {
     const textMesh = createOptimizedText(text, material, size);
     // Update positioning of the text
    
-    scene.add(textMesh);
+    mScene.add(textMesh);
+    return textMesh;
+}
+
+
+function createTextMesh(text, size=2, color='black') {
+    
+    // Create a standard material with 50% gloss
+    const material = new THREE.MeshStandardMaterial({
+        color: color,
+        roughness: 0.1
+    });
+    
+    // Geometries are attached to meshes so that they get rendered
+    const textMesh = createOptimizedText(text, material, size);
+    // Update positioning of the text
     return textMesh;
 }
 
@@ -443,4 +458,198 @@ function isWebGLAvailable() {
     } catch (e) {
         return false;
     }
+}
+
+function createVillage(
+    numberOfHouses = 10,
+    villagePosition = new THREE.Vector3(0, 0, 0),
+    houseSize = 0.5, roofColor=0xff0000 // Nouveau paramètre de taille (0.5 = 50% de la taille originale)
+) {
+    const village = new THREE.Group();
+    village.position.copy(villagePosition);
+
+    // Matériaux
+    const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+    const roofMaterial = new THREE.MeshStandardMaterial({ color: roofColor });
+
+    // Création des maisons
+    for(let i = 0; i < numberOfHouses; i++) {
+        const house = new THREE.Group();
+        
+        // Structure principale (taille réduite)
+        const geometry = new THREE.BoxGeometry(
+            4 * houseSize, 
+            3 * houseSize, 
+            4 * houseSize
+        );
+        const mesh = new THREE.Mesh(geometry, wallMaterial);
+        mesh.position.y = 1.5 * houseSize; // Ajustement de la position verticale
+        house.add(mesh);
+
+        // Toit pyramidal (taille réduite)
+        const roofGeometry = new THREE.ConeGeometry(
+            3.2 * houseSize, // Rayon réduit
+            2 * houseSize,   // Hauteur réduite
+            4
+        );
+        const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+        roof.rotation.y = Math.PI / 4;
+        roof.position.y = 4 * houseSize; // Position ajustée selon la taille
+        house.add(roof);
+
+        // Position aléatoire (rayon réduit en fonction de la taille)
+        const angle = Math.random() * Math.PI * 2;
+        const radius = Math.random() * 20 * houseSize; // Rayon de placement réduit
+        
+        house.position.x = Math.cos(angle) * radius;
+        house.position.z = Math.sin(angle) * radius;
+        house.position.y = 0;
+
+        // Rotation aléatoire
+        house.rotation.y = Math.random() * Math.PI * 2;
+
+        village.add(house);
+    }
+
+    return village;
+}
+
+// Températures de référence
+const minTemp = -10;  // Froid extrême (bleu nuit)
+const maxTemp = 45;   // Chaleur extrême (rougeoyant)
+
+function updateSkyColor(temperature, scene) {
+    // Clamper et normaliser la température
+    const clamped = THREE.MathUtils.clamp(temperature, minTemp, maxTemp);
+    const t = (clamped - minTemp) / (maxTemp - minTemp);
+
+    // Couleurs de base réalistes
+    const coldColor = new THREE.Color(0x1a237e);    // Bleu nuit profond
+    const coolColor = new THREE.Color(0x87CEEB);    // Bleu ciel clair
+    const warmColor = new THREE.Color(0xFFA500);     // Orange chaud
+    const hotColor = new THREE.Color(0x8B0000);      // Rouge intense
+
+    // Interpolation en 3 phases
+    let color;
+    if(t < 0.4) {
+        // Phase froide : bleu nuit → bleu ciel
+        color = coldColor.clone().lerp(coolColor, t * 2.5);
+    } 
+    else if(t < 0.7) {
+        // Phase tempérée : bleu ciel → blanc (pas de vert)
+        const phaseT = (t - 0.4) / 0.3;
+        color = new THREE.Color().lerpColors(
+            coolColor, 
+            new THREE.Color(0xF0F8FF), // Bleu très clair
+            phaseT
+        );
+    }
+    else {
+        // Phase chaude : blanc → orange → rouge
+        const phaseT = (t - 0.7) / 0.3;
+        color = new THREE.Color().lerpColors(
+            new THREE.Color(0xF0F8FF), 
+            hotColor, 
+            phaseT
+        );
+    }
+
+    // Ajustement dynamique de la luminosité
+    const lightness = THREE.MathUtils.lerp(0.15, 0.95, t); 
+    color.lerp(new THREE.Color(1, 1, 1), (lightness - 0.5) * 0.3);
+
+    // Ajout d'une teinte atmosphérique
+    if(t > 0.6) {
+        const dust = THREE.MathUtils.smoothstep(t, 0.6, 1);
+        color.addScalar(dust * 0.1); // Effet de brume chaude
+    }
+
+    scene.background = color;
+}
+
+// Avec pré-calcul des constantes (R_specific = R/M = 287 J/(kg·K))
+function airDensity(temperatureCelsius) {
+    return (353.07 / (temperatureCelsius + 273.15)).toFixed(3); // en kg/m³
+}
+
+// Paramètres initiaux
+const REF_DENSITY = 1.225; // kg/m³ à 15°C
+const REF_PARTICLES = 3000;
+
+function updateParticleCount(density) {
+    // Calcul du ratio de particules
+    const ratio = density / REF_DENSITY;
+    const newCount = Math.round(REF_PARTICLES * (ratio*ratio*ratio*ratio*ratio*ratio));
+    
+    // Seuils de sécurité
+    const MIN_PARTICLES = 500;
+    const MAX_PARTICLES = 10000;
+    currentParticles = THREE.MathUtils.clamp(newCount, MIN_PARTICLES, MAX_PARTICLES);
+    return currentParticles;
+}
+
+function createCurve() {
+    const positions = new Float32Array(maxPoints * 3);
+    curveGeometry = new THREE.BufferGeometry();
+    curveGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    
+    const material = new THREE.LineBasicMaterial({ 
+        color: 0x0000ff,
+        linewidth: 999
+    });
+    
+    curveLine = new THREE.Line(curveGeometry, material);
+    // Positionnement à l'origine des axes
+    // curveLine.position.set(30, graphHeight - 30, 0);
+    // overlayScene.add(curveLine);
+
+    curveLine.position.copy(graphOrigin); // Positionnement exact à l'origine
+    overlayScene.add(curveLine);
+}
+
+function map(value, inMin, inMax, outMin, outMax) {
+    return (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
+}
+
+function resetCurve() {
+    // Réinitialisation des données de la courbe
+    const positions = curveGeometry.attributes.position.array;
+    positions.fill(0); // Remise à zéro du buffer
+    currentIndex = 0;
+    curveGeometry.setDrawRange(0, 0);
+    curveGeometry.attributes.position.needsUpdate = true;
+}
+
+function createGraphAxes() {
+    // Axe X (vitesse)
+    const xAxis = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(graphMargin, graphMargin, 0),
+            new THREE.Vector3(graphWidth - graphMargin, graphMargin, 0)
+        ]),
+        new THREE.LineBasicMaterial({ color: 0x000000 })
+    );
+    overlayScene.add(xAxis);
+
+    // Axe Y (puissance)
+    const yAxis = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(graphMargin, graphMargin, 0),
+            new THREE.Vector3(graphMargin, graphHeight - 30, 0)
+        ]),
+        new THREE.LineBasicMaterial({ color: 0x000000 })
+    );
+    overlayScene.add(yAxis);
+
+    // Labels
+    const vLabel = createTextMesh("v (m/s)", 1.5, "black");
+    vLabel.position.set(graphWidth - 30, 25, 0);
+    vLabel.position.set(graphWidth - graphMargin - 50, graphMargin - 20, 0);
+    overlayScene.add(vLabel);
+
+    const pLabel = createTextMesh("P (kW)", 1.5, "black");
+    pLabel.rotateZ(-Math.PI/2);
+    pLabel.position.set(10, graphHeight/2, 0);
+    pLabel.position.set(graphMargin - 20, graphHeight/2, 0);
+    overlayScene.add(pLabel);
 }

@@ -27,13 +27,13 @@ const towerSize = 25;
 let activeGroundMaterial, notActiveGroundMaterial;
 
 // Initialize particle system variables
-let particleSystem, particleCount, particleCountLegend, windParticles, windParticlesSystemLegend, particlePositions, particleSpeeds;
+let particleSystem, particleCount, lastParticleCount, particleCountLegend, windParticles, windParticlesSystemLegend, particlePositions, particleSpeeds;
 
 let blades, bladesL, blades0, disk, bladesCylinder;
 
 let particles;
 
-let pth, pTtextMesh, power;
+let pth, pTtextMesh, power, rho;
 let pmax, pMaxTextMesh, max_power;
 
 let pales_text, multip_text;
@@ -64,6 +64,17 @@ let multiplicateurL, alternateurL;
 
 let points, points2;
 
+// let curveGeometry, curveLine;
+// let currentIndex = 0;
+// const maxPoints = 100;
+// const scaleFactor = 0.02; // Facteur d'échelle pour la visualisation
+// let lastBladeLength;
+// let overlayScene, overlayCamera;
+// const graphWidth = 300; // Largeur du graphe en pixels
+// const graphHeight = 200; // Hauteur du graphe
+// const graphMargin = 30;
+// const graphOrigin = new THREE.Vector3(graphMargin, graphMargin, 0);
+
 // Appeler avant initScene()
 preloadSizes([2, 1.2, ]);
 
@@ -78,6 +89,7 @@ function init() {
     renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
+    // renderer.autoClear = false; // <-- Ajout crucial
 
     // Ajouter l'événement de clic
     renderer.domElement.addEventListener('click', onMouseClick, false);
@@ -461,7 +473,6 @@ function init() {
 
     createCable(new THREE.Vector3(8, -1, 0), new THREE.Vector3(9, -1, 0));
 
-    document.getElementById('cameraX').value = camera.position.x;
     camera.position.z = 55;
     camera.position.y = 0;
 
@@ -525,6 +536,38 @@ function init() {
 
     // FIN TRANSFO ET DISTRIBUTION
 
+    // DEBUT VILLAGE
+
+    const villageA = createVillage(15, new THREE.Vector3(-125, 0, 0), 1);
+    scene.add(villageA);
+
+    const villageB = createVillage(15, new THREE.Vector3(-250, 0, 0), 1, 0x0000ff);
+    scene.add(villageB);
+
+    // FIN VILLAGE
+
+   
+
+    // DEBUT CurveGeometry
+
+    // Scène overlay pour le graphe
+    // overlayScene = new THREE.Scene();
+    // overlayCamera = new THREE.OrthographicCamera(
+    //     0, graphWidth, graphHeight, 0, 1, 1000
+    // );
+    // overlayCamera.position.z = 500;
+
+    // // Fond blanc pour le graphe
+    // const backgroundGeometry = new THREE.PlaneGeometry(graphWidth, graphHeight);
+    // const backgroundMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    // const background = new THREE.Mesh(backgroundGeometry, backgroundMaterial);
+    // background.position.set(graphWidth/2, graphHeight/2, -1);
+    // overlayScene.add(background);
+
+    // // Axes du graphe
+    // createGraphAxes();
+    // createCurve();
+    // FIN CurveGeometry
     updateSimulation();
     animate(0);
 
@@ -532,19 +575,23 @@ function init() {
 }
 
 function updateSimulation() {
+
+
     windSpeed = parseFloat(document.getElementById('windSpeed').value);
+    windSpeedNominal = parseFloat(document.getElementById('windSpeedNominal').value);
     windSpeed = windActive ? parseFloat(document.getElementById('windSpeed').value) : 0;
     bladeLength = parseFloat(document.getElementById('bladeLength').value);
     powerUnit = document.getElementById('powerUnit').value;
     bladeLengthSimul = bladeLength/2;
-    r = parseFloat(document.getElementById('rendement').value);
-
-    g = 10;
-    rho = 1.225;
+    temperature = parseFloat(document.getElementById('temperature').value);
+    // Exemple d'utilisation avec une température de 25°C
+    updateSkyColor(temperature, scene);
+    
+    rho = airDensity(temperature); //1.225;
     S = Math.PI*Math.pow(bladeLength, 2);
     v3 = Math.pow(windSpeed, 3);
     if (windSpeed >= windSpeedLowNorm && windSpeed <= windSpeedHighNorm && (palesActive && arbreLentActive)) {
-        power = (1/2)*g*rho*S*v3;
+        power = (1/2)*rho*S*v3;
         if (powerUnit == "kW") {
             power /= 1000;
         } else if (powerUnit == "MW") {
@@ -553,6 +600,28 @@ function updateSimulation() {
     } else {
         power = 0;
     }
+
+    
+
+    // if(!(currentIndex >= maxPoints)) {
+    //     currentIndex = windSpeed;
+    //     const v = currentIndex * 0.5;
+    //     const P = power;
+    //     const positions = curveGeometry.attributes.position.array;
+        
+    //     // Mapping des coordonnées
+    //     const x = map(v, 0, 25, 0, graphWidth - 2*graphMargin);
+    //     const y = map(P/1000, 0, 500, 0, graphHeight - 2*graphMargin);
+
+    //     positions[currentIndex * 3] = x;
+    //     positions[currentIndex * 3 + 1] = y; // Y positif vers le haut
+    //     positions[currentIndex * 3 + 2] = 0;
+
+    
+    //     curveGeometry.attributes.position.needsUpdate = true;
+    //     currentIndex++;
+    // }
+
 
     setVisibility(multiplicateurActive, multiplicateur, shaft2);
     setVisibility(alternateurActive, alternateur, shaft3, shaft4);
@@ -617,7 +686,10 @@ function updateSimulation() {
 
 
     document.getElementById('bladeLengthCaption').innerHTML = "L="+bladeLength+" m";
-    document.getElementById('windSpeedCaption').innerHTML = "v="+windSpeed+" m/s";
+    document.getElementById('densityCaption').innerHTML = "ρ="+rho+" kg/m<sup>3</sup>";
+    document.getElementById('temperatureCaption').innerHTML = ""+temperature+" °C";
+    document.getElementById('windSpeedCaption').innerHTML = "v<sub>vent</sub>="+windSpeed+" m/s";
+    document.getElementById('windSpeedNominalCaption').innerHTML = "v<sub>nom</sub>="+windSpeedNominal+" m/s";
     document.getElementById('surfaceBalayee').innerHTML = "Surface balayée par les pales <b>S="+S.toFixed(0)+"m<sup>2</sup></b>";
 
     if (powerUnit == "W") {
@@ -679,16 +751,16 @@ function updateSimulation() {
         if (true || (windSpeed >= windSpeedLowNorm && windSpeed <= windSpeedHighNorm)) {
             // Geometries are attached to meshes so that they get rendered
             //pTtextMesh = new THREE.Mesh(ptTextGeometry, ptTextMaterial);
-            pTtextMesh = createOptimizedText(Number.parseFloat(power_).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' '+powerUnit, ptTextMaterial, 2);
+            /* pTtextMesh = createOptimizedText(Number.parseFloat(power_).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' '+powerUnit, ptTextMaterial, 2);
             // Update positioning of the text
             pTtextMesh.position.set(-15, -10, 3);
-            scene.add(pTtextMesh);
+            scene.add(pTtextMesh); */
 
             //pMaxTextMesh = new THREE.Mesh(pMaxTextGeometry, pMaxTextMaterial);
-            pMaxTextMesh = createOptimizedText(Number.parseFloat(max_power_).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' '+powerUnit, pMaxTextMaterial);
+           /*  pMaxTextMesh = createOptimizedText(Number.parseFloat(max_power_).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' '+powerUnit, pMaxTextMaterial);
             // Update positioning of the text
             pMaxTextMesh.position.set(-14, -20, 3);
-            scene.add(pMaxTextMesh);
+            scene.add(pMaxTextMesh); */
 
             if(nombre_tour_par_minute_pales != last_nombre_tour_par_minute_pales) {
                 scene.remove(pales_text);
@@ -718,9 +790,15 @@ function updateSimulation() {
         alertLow.style.display = 'none';
     }
 
-    if (windSpeed > 0 && !particleSystem) {
+    particleCount = updateParticleCount(rho);
+    
+    if (windSpeed > 0 && (!particleSystem || (particleCount != lastParticleCount))) {
+        console.log(particleCount)
+        lastParticleCount = particleCount;
+        if (particleSystem) {
+            scene.remove(particleSystem);
+        }
         // Create particle geometry and material
-        particleCount = 3000;
         windParticles = new THREE.BufferGeometry();
         particlePositions = new Float32Array(particleCount * 3);
         particleSpeeds = new Float32Array(particleCount);
@@ -833,7 +911,6 @@ function animate(timestamp) {
     deltaTime = (timestamp - last_timestamp)*0.001;
     last_timestamp = timestamp;
     requestAnimationFrame(animate);
-    controls.update();
 
     if (particleSystem) {
         const positions = particleSystem.geometry.attributes.position.array;
@@ -908,14 +985,22 @@ function animate(timestamp) {
             }
         }
     });
+    renderer.render(scene, camera);
+    controls.update();
 
     // Calculer la puissance produite par l'éolienne
     //let power = calculatePower();  // Exemple: calcul de la puissance
 
     // Mettre à jour l'affichage du galvanomètre
-    //updateGalvanometer(galvanometerObj, power);
+    // //updateGalvanometer(galvanometerObj, power);
+    // renderer.clear();
 
-    renderer.render(scene, camera);
+    // renderer.render(scene, camera);
+    // // Rendu overlay dans le coin inférieur gauche
+    // renderer.setViewport(200, 200, graphWidth, graphHeight);
+    // renderer.render(overlayScene, overlayCamera);
+    // renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
+    // controls.update();
 }
 
 
