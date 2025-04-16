@@ -158,6 +158,11 @@ const canvas = document.getElementById('graph');
             if(currentAnimationFrame) cancelAnimationFrame(currentAnimationFrame);
             overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
 
+            // Affichage de l'effet sur l'animation
+            document.getElementById("windSpeed").value = point.v;
+            updateSimulation();
+            updateCalculation();
+
             // Animation des tirets
             await animateDashedLines([
                 {startX: point.x, startY: point.y, endX: point.x, endY: canvas.height - 40},
@@ -298,8 +303,3 @@ const canvas = document.getElementById('graph');
                 ctx.fillText(`${v} m/s`, x - 15, canvas.height - 25);
             }
         }
-		
-document.onreadystatechange = function (e) {
-	setDraggable('courbe');
-	setDraggable('result_fermer');
-}

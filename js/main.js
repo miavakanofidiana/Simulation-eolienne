@@ -589,7 +589,15 @@ function updateSimulation() {
     
     rho = airDensity(temperature); //1.225;
     S = Math.PI*Math.pow(bladeLength, 2);
-    v3 = Math.pow(windSpeed, 3);
+    let v = windSpeed;
+    if (windSpeed > windSpeedHighNorm) {
+        v = 0;
+    } else if (windSpeed < windSpeedLowNorm) {
+        v = 0;
+    } else if (windSpeed > windSpeedNominal) {
+        v = windSpeedNominal;
+    }
+    v3 = Math.pow(v, 3);
     if (windSpeed >= windSpeedLowNorm && windSpeed <= windSpeedHighNorm && (palesActive && arbreLentActive)) {
         power = (1/2)*rho*S*v3;
         if (powerUnit == "kW") {
@@ -629,7 +637,7 @@ function updateSimulation() {
     setVisibility(arbreLentActive, shaft);
 
     gamma = 7; //vitesse spécifique
-    w = (gamma*windSpeed*0.59)/bladeLength;
+    w = (gamma*v*0.59)/bladeLength;
 
     if (!palesActive || windSpeed < windSpeedLowNorm) {
         w = 0;

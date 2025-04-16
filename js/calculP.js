@@ -167,80 +167,9 @@ let typingInterval;
             scene.add(pMaxTextMesh);
         }
 
-        const draggable = document.getElementById('courbe');
-
-        let isDragging = false;
-
-function startDrag(e, isTouchEvent) {
-    // Vérifie si l'élément cible est un enfant interactif
-    const target = e.target;
-    if (target !== draggable && target.closest('[data-clickable]')) {
-        return; // Ignore le drag si c'est un élément cliquable
-    }
-    // Empêche le comportement par défaut (défilement, zoom)
-    if (isTouchEvent) e.preventDefault();
-
-    // Désactive les événements sur les enfants pendant le drag
-    draggable.style.pointerEvents = 'none';
-
-    // Récupère les coordonnées initiales
-    const clientX = isTouchEvent ? e.touches[0].clientX : e.clientX;
-    const clientY = isTouchEvent ? e.touches[0].clientY : e.clientY;
-
-    // Calcule le décalage initial
-    const rect = draggable.getBoundingClientRect();
-    const shiftX = clientX - rect.left;
-    const shiftY = clientY - rect.top;
-
-    function moveAt(pageX, pageY) {
-        draggable.style.left = `${pageX - shiftX}px`;
-        draggable.style.top = `${pageY - shiftY}px`;
-    }
-
-    function handleMove(e) {
-        if (isTouchEvent) {
-            // Pour les événements tactiles
-            const touch = e.touches[0];
-            moveAt(touch.pageX, touch.pageY);
-            e.preventDefault(); // Empêche le défilement
-        } else {
-            // Pour la souris
-            moveAt(e.pageX, e.pageY);
-        }
-    }
-
-    function handleEnd() {
-        // Réactive les événements après le drag
-        draggable.style.pointerEvents = 'auto';
-        if (isTouchEvent) {
-            document.removeEventListener('touchmove', handleMove);
-            document.removeEventListener('touchend', handleEnd);
-        } else {
-            document.removeEventListener('mousemove', handleMove);
-            document.removeEventListener('mouseup', handleEnd);
-        }
-
-        // Vérifie si c'était un clic simple (sans mouvement)
-        if (!isDragging) {
-            const clickEvent = new Event('click');
-            target.dispatchEvent(clickEvent);
-        }
-        isDragging = false;
-    }
-
-    // Ajoute les écouteurs appropriés
-    if (isTouchEvent) {
-        document.addEventListener('touchmove', handleMove, { passive: false });
-        document.addEventListener('touchend', handleEnd, { passive: false });
-    } else {
-        document.addEventListener('mousemove', handleMove);
-        document.addEventListener('mouseup', handleEnd);
-    }
+        
+		
+document.onreadystatechange = function (e) {
+	setDraggable('courbe');
+	setDraggable('result_fermer');
 }
-
-// Gestionnaires pour le démarrage du glissement
-draggable.addEventListener('mousedown', (e) => startDrag(e, false));
-draggable.addEventListener('touchstart', (e) => startDrag(e, true));
-
-// Désactive le drag-and-drop natif
-draggable.ondragstart = () => false;
