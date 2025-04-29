@@ -31,34 +31,9 @@ let typingInterval;
             let v = windSpeed;
             const rho = airDensity(parseFloat(inputs.temperature.value));
 
-
-            let text = "<p>Puissance théorique</p>";
-            if (windSpeed > windSpeedHighNorm) {
-                text += "<p>Vitesse du vent trop forte!</p>";
+            if (windSpeed > windSpeedHighNorm || windSpeed < windSpeedLowNorm) {
                 v = 0;
-            } else if (windSpeed < windSpeedLowNorm) {
-                text += "<p>Vitesse du vent trop faible!</p>";
-                v = 0;
-            } else {
-                
-                if (windSpeed <= windSpeedNominal) {
-                    text += `<p>v<sub>vent</sub>=${windSpeed} m/s &els; v<sub>nominale</sub>=${windSpeedNominal} m/s</p>`;
-                    text += `<p> alors v=${windSpeed} m/s</p>`;
-                } else  {
-                    text += `<p>v<sub>vent</sub>=${windSpeed} m/s &gt; v<sub>nominale</sub>=${windSpeedNominal} m/s</p>`;
-                    text += `<p> alors v=${windSpeedNominal} m/s</p>`;
-                    v = windSpeedNominal;
-                }
-                text += `<p>L=${bladeLength} m</p>`;
-                text += `<p>ρ=${rho} kg/m<sup>3</sup></p>`;
-                //text += `<p>Alors</p>`;
-                text += formatLine(`<p>P<sub>TH</sub> = (1/2)·ρ·S·v³</p>`, L, v, rho);
-                text += formatLine(`<p>    = (1/2)·ρ·(π·L²)·v³</p>`, L, v, rho);
-                text += formatLine(`<p>    = (1/2)·(${rho})·(π·${L}²)·(${v}³)</p>`, L, v, rho);
-                text += formatLine(`<p>P<sub>TH</sub>  = ...</p>`, L, v, rho);
             }
-
-            text = formatLine(text, L, v, rho);
 
             // Calcul
             S = Math.PI*Math.pow(bladeLength, 2);
@@ -72,11 +47,58 @@ let typingInterval;
                 power /= 1000000;
                 power_ = power.toFixed(3);
             }
+
+            max_power = power * 16/27;
+            
+            if (powerUnit == "W") {
+                max_power_ = max_power.toFixed(0);
+            } else if (powerUnit == "kW") {
+                max_power_ = max_power.toFixed(3)
+            } else if (powerUnit == "MW") {
+                max_power_ = max_power.toFixed(3);
+            }
+
+            max_power_text = Number.parseFloat(max_power_).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' '+powerUnit;
+
             power_text = Number.parseFloat(power_).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' '+powerUnit;
             if (!calculationIsVisible()) {
-                showSceneTexts(power_text, power);
+                showSceneTexts(power_text, max_power_text);
                 return;
             }
+
+
+            let text = "<p style='font-weight:bold;text-decoration: underline;'>Puissance théorique</p>";
+            if (windSpeed > windSpeedHighNorm) {
+                text += "<p>Vitesse du vent trop forte!</p>";
+                v = 0;
+            } else if (windSpeed < windSpeedLowNorm) {
+                text += "<p>Vitesse du vent trop faible!</p>";
+                v = 0;
+            } else {
+                
+                if (windSpeed <= windSpeedNominal) {
+                    text += `<p>v<sub>vent</sub>=${windSpeed} m/s &els; v<sub>nominale</sub>=${windSpeedNominal} m/s`;
+                    text += `<p> alors v=${windSpeed} m/s</p>`;
+                } else  {
+                    text += `<p>v<sub>vent</sub>=${windSpeed} m/s &gt; v<sub>nominale</sub>=${windSpeedNominal} m/s</p>`;
+                    text += `<p> alors v=${windSpeedNominal} m/s</p>`;
+                    v = windSpeedNominal;
+                }
+                text += `<p>L=${bladeLength} m,  `;
+                text += `ρ=${rho} kg/m<sup>3</sup></p>`;
+                //text += `<p>Alors</p>`;
+                text += (`<p style='border: 1px solid black;'> P<sub>TH</sub> = (1/2)·ρ·S·v³</p>`);
+                //text += (`<p>Expression : \\(\\sqrt{A + 2B + \\frac{C}{D}}\\)</p>`);
+                text += (`<p>     = (1/2)·ρ·(π·L²)·v³</p>`);
+                text += (`<p>     = (1/2)·(${rho})·(π·${L}²)·(${v}³)</p>`);
+                text += (`<p style='border: 1px solid black;'> P<sub>TH</sub> = ${power_text}</p>`);
+                text += (`<p style='font-weight:bold;text-decoration: underline;'>Puissance maximale</p>`);
+                text += (`<p style='border: 1px solid black;'> P<sub>MAX</sub>  = 16/27.P<sub>TH</sub> (Loi de Betz)</p>`);
+                text += (`<p>       = 0,593.${power_text}</p>`);
+                text += (`<p style='border: 1px solid black;'> P<sub>MAX</sub> = ...</p>`);
+            }
+
+            text = formatLine(text, L, v, rho);
 
             const resultDiv = document.querySelector('.result');
             resultDiv.innerHTML = text;
@@ -88,30 +110,30 @@ let typingInterval;
             typingInterval = setInterval(function() {
                 if (i < text.length) {
                     // Gère les balises HTML
-                    if (false && text[i] === '<') {
+                    if (true && text[i] === '<') {
                         const endTag = text.indexOf('>', i);
-                        resultDiv.innerHTML += text.substring(i, endTag + 1);
+                        buffer += text.substring(i, endTag + 1);
                         i = endTag + 1;
                     } else {
                         // Accumule le texte brut dans un buffer
-                        buffer += text[i];
-                        
-                        // Affiche le contenu brut TEMPORAIREMENT
-                        resultDiv.innerHTML = buffer + "█"; // Curseur clignotant stylisable en CSS
+                        buffer += text[i];    
                         i++;
+
                     }
+                    // Affiche le contenu brut TEMPORAIREMENT
+                    resultDiv.innerHTML = buffer + "█"; // Curseur clignotant stylisable en CSS
+                    //MathJax.typesetPromise(); // Recompile le contenu mathématique
                 } else {
                     clearInterval(typingInterval);
                     
                     // Ajoute le résultat final après un délai
                     setTimeout(() => {
-
-                        resultDiv.innerHTML = resultDiv.innerHTML.replace('...', power_text);
-						showSceneTexts(power_text, power);
+                        resultDiv.innerHTML = resultDiv.innerHTML.replace('...', max_power_text).replace('█', '');
+						showSceneTexts(power_text, max_power_text);
 						
-                    }, 500);
+                    }, 100);
                 }
-            }, 10);
+            }, 50);
         }
 
         function formatLine(content, L, v, rho) {
@@ -129,10 +151,13 @@ let typingInterval;
                 .replaceAll(new RegExp(`${L}²`, 'g'), `<span class="highlight-magenta">${L}<sup>2</sup></span>`)
                 .replaceAll(new RegExp(`${L} m`, 'g'), `<span class="highlight-magenta">${L} m</span>`)
                 .replaceAll(new RegExp(`${v}³`, 'g'), `<span class="highlight-green">${v}<sup>3</sup></span>`)
-                .replaceAll(new RegExp(`${v} m/s`, 'g'), `<span class="highlight-green">${v} m/s</span>`);
+                .replaceAll(new RegExp(`${v} m/s`, 'g'), `<span class="highlight-green">${v} m/s</span>`)
+                .replaceAll('16/27', '<span class="fraction"><b><span>16</span><span class="denominator">27</span></b></span>')
+                .replaceAll('= 0,593', '<b>= 0,593</b>')
+                ;
         }
 
-        function showSceneTexts(power_text, power) {
+        function showSceneTexts(power_text, max_power_text) {
             if (pTtextMesh) {
                 scene.remove(pTtextMesh);
                 scene.remove(pMaxTextMesh);
@@ -146,22 +171,13 @@ let typingInterval;
             pTtextMesh.position.set(-15, -10, 3);
             scene.add(pTtextMesh);
             
-            max_power = power * 16/27;
-            
-            if (powerUnit == "W") {
-                max_power_ = max_power.toFixed(0);
-            } else if (powerUnit == "kW") {
-                max_power_ = max_power.toFixed(3)
-            } else if (powerUnit == "MW") {
-                max_power_ = max_power.toFixed(3);
-            }
 
             // Create a standard material with 50% gloss
             const pMaxTextMaterial = new THREE.MeshStandardMaterial({
                 color: pMaxColor,
                 roughness: 0.1
             });
-            pMaxTextMesh = createOptimizedText(Number.parseFloat(max_power_).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' '+powerUnit, pMaxTextMaterial);
+            pMaxTextMesh = createOptimizedText(max_power_text, pMaxTextMaterial);
             // Update positioning of the text
             pMaxTextMesh.position.set(-14, -20, 3);
             scene.add(pMaxTextMesh);
