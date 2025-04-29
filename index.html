@@ -259,7 +259,7 @@
             position: absolute;
             background-color: white;
             z-index: 200;
-            top: 30%;
+            top: 20%;
             left: 30%;
             width: auto;
             display: none;
@@ -293,9 +293,9 @@
                 <div class="control">
                     <label>Vitesse du vent <span id="windSpeedCaption"></span></label>
                     <div class="slider-container">
-                        <button class="btn-sm" onclick="adjustValue('windSpeed', -1)">-</button>
+                        <button class="btn-sm" onclick="adjustValue('windSpeed', -0.1)">-</button>
                         <input type="range" id="windSpeed" value="10" min="0" max="30" step="0.1" oninput="updateSimulation();updateCalculation();">
-                        <button class="btn-sm" onclick="adjustValue('windSpeed', 1)">+</button>
+                        <button class="btn-sm" onclick="adjustValue('windSpeed', 0.1)">+</button>
                     </div>
                     <div class="alerts">
                         <div id="alertHigh" class="alert">La vitesse du vent est trop forte!</div>
@@ -349,8 +349,9 @@
                 </select>
             </div>
             <div id="buttons">
-                <button onclick="showCalculation();">Calculer la puissance</button>
-                <button onclick="showCourbePuissance();">Afficher la courbe</button>
+                <button onclick="showCalculation();">Calculer les puissances</button>
+                <button onclick="showCourbePuissance();">Tracer la courbe</button>
+                <button onclick="window.location.href='sound.html'">Mise en place d'une éolienne</button>
             </div>
             <div id="surfaceBalayee" style="display: none;"></div>
         </div>

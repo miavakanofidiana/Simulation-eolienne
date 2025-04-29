@@ -538,11 +538,14 @@ function init() {
 
     // DEBUT VILLAGE
 
-    const villageA = createVillage(15, new THREE.Vector3(-125, 0, 0), 1);
+    /* const villageA = createVillage(15, new THREE.Vector3(-125, 0, 0), 1);
     scene.add(villageA);
 
     const villageB = createVillage(15, new THREE.Vector3(-250, 0, 0), 1, 0x0000ff);
-    scene.add(villageB);
+    scene.add(villageB); */
+
+    const villageC = createVillage(15, new THREE.Vector3(100, 0, 0), 1, 0x00ff00);
+    scene.add(villageC);
 
     // FIN VILLAGE
 
