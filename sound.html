@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mise en place d'une éolienne</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            touch-action: none;
+        }
+        canvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        #controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.8);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #legende {
+            position: fixed;
+            bottom: 20px;
+            right: 20px; /* Déplacé à droite */
+            left: auto; 
+            background: rgba(255,255,255,0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+        }
+        .legende-item {
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+        }
+        .couleur {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+        }
+        button {
+            padding: 8px 15px;
+            margin: 0 5px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="simulation"></canvas>
+    <div id="controls">
+        <button onclick="zoom(-0.2)">-</button>
+        <button onclick="zoom(0.2)">+</button>
+    </div>
+
+    <div id="legende">
+        <div class="legende-item">
+            <div class="couleur" style="background: rgba(255, 0, 0, 0.3);"></div>
+            <span>🔴 Rouge : Zone à bruit critique</span>
+        </div>
+        <div class="legende-item">
+            <div class="couleur" style="background: rgba(255, 255, 0, 0.3);"></div>
+            <span>🟡 Jaune : Distance minimale obligatoire</span>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simulation');
+        const ctx = canvas.getContext('2d');
+        
+        // Configuration audio
+        let audioContext;
+        let gainNode;
+        let audioInitialized = false;
+
+        // Configuration simulation
+        let scale = 1;
+        let panX = 0;
+        let panY = 0;
+        let isDraggingTurbine = false;
+        let isPanning = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        const state = {
+            house: { x: 400, y: 300 },
+            turbine: { x: 100, y: 100, radius: 15 },
+            hitRadius: 30 // Rayon de détection agrandi
+        };
+
+        // Conversion de coordonnées
+        function toScreen(x, y) {
+            return {
+                x: (x - panX) * scale,
+                y: (y - panY) * scale
+            };
+        }
+
+        function toWorld(x, y) {
+            return {
+                x: (x / scale) + panX,
+                y: (y / scale) + panY
+            };
+        }
+
+        // Redimensionnement
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Gestion audio
+        async function setupAudio() {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            await audioContext.resume();
+            
+            // Création du bruit
+            const bufferSize = 2 * audioContext.sampleRate;
+            const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+
+            const noise = audioContext.createBufferSource();
+            noise.buffer = noiseBuffer;
+            noise.loop = true;
+            
+            const bandpass = audioContext.createBiquadFilter();
+            bandpass.type = 'bandpass';
+            bandpass.frequency.value = 300;
+            
+            gainNode = audioContext.createGain();
+            noise.connect(bandpass);
+            bandpass.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            noise.start();
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            audioInitialized = true;
+        }
+
+        // Gestion des entrées
+        async function handleStart(e) {
+            e.preventDefault();
+            
+            if(!audioInitialized) {
+                await setupAudio();
+            }
+            
+            const pos = getCanvasPos(e);
+            const worldPos = toWorld(pos.x, pos.y);
+            
+            // Vérification avec rayon étendu et adapté au zoom
+            const screenSize = state.hitRadius / scale;
+            if(Math.hypot(worldPos.x - state.turbine.x, worldPos.y - state.turbine.y) < screenSize) {
+                isDraggingTurbine = true;
+            } else {
+                isPanning = true;
+                lastX = pos.x;
+                lastY = pos.y;
+            }
+        }
+
+        function handleMove(e) {
+            const pos = getCanvasPos(e);
+            
+            if(isDraggingTurbine) {
+                const worldPos = toWorld(pos.x, pos.y);
+                state.turbine.x = worldPos.x;
+                state.turbine.y = worldPos.y;
+                updateSound();
+            } else if(isPanning) {
+                const dx = (pos.x - lastX) / scale;
+                const dy = (pos.y - lastY) / scale;
+                panX -= dx;
+                panY -= dy;
+                lastX = pos.x;
+                lastY = pos.y;
+            }
+            
+            draw();
+        }
+
+        function getCanvasPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (e.touches ? e.touches[0].clientX : e.clientX) - rect.left,
+                y: (e.touches ? e.touches[0].clientY : e.clientY) - rect.top
+            };
+        }
+
+        function updateSound() {
+            if(!audioInitialized) return;
+            
+            const dx = state.turbine.x - state.house.x;
+            const dy = state.turbine.y - state.house.y;
+            const distance = Math.sqrt(dx*dx + dy*dy);
+
+            if(distance > 500) {
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                return;
+            }
+            
+            let volume = 1 - (distance/500);
+            if(distance < 300) volume = 1;
+            else volume = 1 - ((distance - 300)/200);
+            
+            gainNode.gain.setValueAtTime(volume * 0.3, audioContext.currentTime);
+        }
+
+        // Dessin
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Maison
+            const houseScreen = toScreen(state.house.x, state.house.y);
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.moveTo(houseScreen.x - 15 * scale, houseScreen.y + 15 * scale);
+            ctx.lineTo(houseScreen.x, houseScreen.y - 15 * scale);
+            ctx.lineTo(houseScreen.x + 15 * scale, houseScreen.y + 15 * scale);
+            ctx.fill();
+            
+            // Texte "Village"
+            ctx.fillStyle = '#000';
+            ctx.font = '16px Arial';
+            ctx.fillText('Village', houseScreen.x + 20, houseScreen.y + 10);
+            
+            // Éolienne avec taille adaptée
+            const turbineScreen = toScreen(state.turbine.x, state.turbine.y);
+            ctx.fillStyle = '#555';
+            ctx.beginPath();
+            ctx.arc(turbineScreen.x, turbineScreen.y, 
+                   state.turbine.radius * scale * 2, // Taille visuelle augmentée
+                   0, Math.PI * 2);
+            ctx.fill();
+            
+            // Texte "Éolienne"
+            ctx.fillStyle = '#000';
+            ctx.fillText('Éolienne', turbineScreen.x + 20, turbineScreen.y + 10);
+            
+            // Zones colorées
+            ctx.fillStyle = 'rgba(255, 255, 0, 0.3)'; // Jaune
+            ctx.beginPath();
+            ctx.arc(turbineScreen.x, turbineScreen.y, 500 * scale, 0, Math.PI * 2);
+            ctx.arc(turbineScreen.x, turbineScreen.y, 300 * scale, 0, Math.PI * 2, true);
+            ctx.fill('evenodd');
+
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.3)'; // Rouge
+            ctx.beginPath();
+            ctx.arc(turbineScreen.x, turbineScreen.y, 300 * scale, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Mesures
+            const dx = state.turbine.x - state.house.x;
+            const dy = state.turbine.y - state.house.y;
+            const distance = Math.sqrt(dx*dx + dy*dy);
+            
+            // Ligne de distance
+            ctx.strokeStyle = getColor(distance);
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(houseScreen.x, houseScreen.y);
+            ctx.lineTo(turbineScreen.x, turbineScreen.y);
+            ctx.stroke();
+            
+            // Échelle graphique
+            drawScale();
+        }
+
+        function drawScale() {
+            const segmentLength = 100;
+            const screenLength = segmentLength * scale;
+            
+            ctx.fillStyle = '#000';
+            ctx.font = '12px Arial';
+            
+            ctx.beginPath();
+            ctx.moveTo(20, canvas.height - 40);
+            ctx.lineTo(20 + screenLength, canvas.height - 40);
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            ctx.fillText(`${segmentLength}m`, 20 + screenLength/2 - 20, canvas.height - 20);
+        }
+
+        function getColor(distance) {
+            if(distance < 300) return '#ff0000';
+            if(distance < 500) return '#ffa500';
+            return '#00ff00';
+        }
+
+        // Contrôles zoom
+        function zoom(amount) {
+            scale = Math.min(Math.max(0.2, scale + amount), 3);
+            draw();
+        }
+
+        // Événements
+        canvas.addEventListener('mousedown', handleStart);
+        canvas.addEventListener('touchstart', handleStart);
+        canvas.addEventListener('mousemove', handleMove);
+        canvas.addEventListener('touchmove', handleMove, { passive: false });
+        
+        canvas.addEventListener('mouseup', () => {
+            isDraggingTurbine = false;
+            isPanning = false;
+        });
+        
+        canvas.addEventListener('touchend', () => {
+            isDraggingTurbine = false;
+            isPanning = false;
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            zoom(e.deltaY > 0 ? -0.1 : 0.1);
+        });
+
+        // Initialisation
+        draw();
+    </script>
+</body>
+</html>
