@@ -25,7 +25,7 @@ function getCharGeometry(char, size) {
             font: TimesFont,
             height: 0.2,
         depth: 0.1,
-        curveSegments: 32,
+        curveSegments: GEOMETRY_SEGMENTS,
         bevelEnabled: false,
         bevelThickness: 0.5,
         bevelSize: 0.5,
@@ -153,7 +153,7 @@ function createTextOLD(text, size=2, color='black', font= TimesFont,) {
         font: font,
         size: size,
         depth: 0.1,
-        curveSegments: 32,
+        curveSegments: GEOMETRY_SEGMENTS,
         bevelEnabled: false,
         bevelThickness: 0.1,
         bevelSize: 0.5,
@@ -179,7 +179,7 @@ function createTextGeometry(text, size=2, color='black', font= TimesFont,) {
         font: font,
         size: size,
         depth: 0.1,
-        curveSegments: 32,
+        curveSegments: GEOMETRY_SEGMENTS,
         bevelEnabled: false,
         bevelThickness: 0.1,
         bevelSize: 0.5,
@@ -195,9 +195,9 @@ function addTextPuissance() {
     pth.position.set(-19, -10.5, 3);
     pth1 = createText('P  =', 2, pth_color)
     pth1.position.set(-20, -10, 3);
-    pmr0 = createText('Puissance maximale récupérable', 2, pMaxColor);
+    pmr0 = createText('Puissance récupérable', 2, pMaxColor);
     pmr0.position.set(-20, -16, 3);
-    pmax=createText('MAX', 1, pMaxColor);
+    pmax=createText('réc', 1, pMaxColor);
     pmax.position.set(-19, -20.5, 3);
     pmr1 = createText('P    =', 2, pMaxColor)
     pmr1.position.set(-20, -20, 3);
@@ -229,7 +229,7 @@ function initBlades() {
     scene.add(blades);
 
     // Création de la géométrie du cylindre
-    const bladesCylinderGeometry = new THREE.CylinderGeometry(bladeLengthSimul, bladeLengthSimul, 7, 32); // 32 segments pour une forme lisse
+    const bladesCylinderGeometry = new THREE.CylinderGeometry(bladeLengthSimul, bladeLengthSimul, 7, GEOMETRY_SEGMENTS); // 32 segments pour une forme lisse
 
     // Création d'un matériau semi-transparent pour le cylindre
     const bladesCylinderMaterial = new THREE.MeshLambertMaterial({ color: 0x0000ff, transparent: true, opacity: 0.05 });
@@ -268,7 +268,7 @@ function initBlades() {
     }
 
     // Création de la géométrie du disque
-    const diskGeometry = new THREE.CircleGeometry(bladeLengthSimul, 32); // 32 segments pour une forme lisse
+    const diskGeometry = new THREE.CircleGeometry(bladeLengthSimul, GEOMETRY_SEGMENTS); // 32 segments pour une forme lisse
 
     // Création d'un matériau semi-transparent pour le disque
     const diskMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff, transparent: true, opacity: 0.02 });
@@ -363,7 +363,7 @@ function removeGroupFromScene(group, scene) {
 
 // Fonction pour créer un cylindre pour les pylônes
 function createPylon(x, y, z) {
-    const geometry = new THREE.CylinderGeometry(0.2, 0.2, 8, 32); // Pylône plus large et plus haut
+    const geometry = new THREE.CylinderGeometry(0.2, 0.2, 8, GEOMETRY_SEGMENTS); // Pylône plus large et plus haut
     const material = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
     const pylon = new THREE.Mesh(geometry, material);
     pylon.position.set(x, y, z);
@@ -373,7 +373,7 @@ function createPylon(x, y, z) {
 }
 
 function createSupport(x, y, z) {
-    const geometry = new THREE.CylinderGeometry(0.2, 0.2, 3, 32);
+    const geometry = new THREE.CylinderGeometry(0.2, 0.2, 3, GEOMETRY_SEGMENTS);
     const material = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
     const support = new THREE.Mesh(geometry, material);
     support.position.set(x, y, z);
@@ -436,7 +436,7 @@ function createGear(innerRadius, outerRadius, teethCount, toothHeight, gearThick
 
 // Ajouter des isolateurs rouges
 function createInsulator(x, y, z) {
-    const insulatorGeometry = new THREE.CylinderGeometry(0.2, 0.3, 0.7, 32);
+    const insulatorGeometry = new THREE.CylinderGeometry(0.2, 0.3, 0.7, GEOMETRY_SEGMENTS);
     const insulatorMaterial = new THREE.MeshLambertMaterial({ color: 0x00ffba });
     const insulator = new THREE.Mesh(insulatorGeometry, insulatorMaterial);
     insulator.position.set(x, y, z);
@@ -652,4 +652,105 @@ function createGraphAxes() {
     pLabel.position.set(10, graphHeight/2, 0);
     pLabel.position.set(graphMargin - 20, graphHeight/2, 0);
     overlayScene.add(pLabel);
+}
+
+function drawGalvanometer(power, maxPower) {
+    const ctx = galvanometerCtx;
+    const canvas = galvanometerCanvas;
+    
+    // Réinitialisation et fond transparent
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // ✅ Ajout d’un fond blanc
+    ctx.fillStyle = "#ffffff"; // blanc
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Paramètres adaptatifs
+    const centerX = canvas.width/2;
+    const centerY = canvas.height/2;
+    const radius = Math.min(centerX, centerY) * 0.8;
+    const angleRange = 1.4 * Math.PI; // 252 degrés
+
+    // Clamper la puissance et calculer le ratio
+    const clampedPower = THREE.MathUtils.clamp(power, 0, maxPower);
+    const powerRatio = maxPower > 0 ? clampedPower / maxPower : 0;
+
+    // Dessin du cadran (version optimisée)
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0.3 * Math.PI, 1.7 * Math.PI);
+    ctx.lineWidth = 15;
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.stroke();
+
+    // Graduations dynamiques
+    const majorSteps = 5;
+    for(let i = 0; i <= majorSteps; i++) {
+        const angle = 0.3 * Math.PI + (i/majorSteps) * angleRange;
+        const value = (i * maxPower / majorSteps).toFixed(0);
+        
+        // Graduation principale
+        ctx.beginPath();
+        ctx.moveTo(
+            centerX + Math.cos(angle) * (radius - 20),
+            centerY + Math.sin(angle) * (radius - 20)
+        );
+        ctx.lineTo(
+            centerX + Math.cos(angle) * radius,
+            centerY + Math.sin(angle) * radius
+        );
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#333';
+        ctx.stroke();
+
+        // Texte des valeurs
+        ctx.save();
+        ctx.translate(
+            centerX + Math.cos(angle) * (radius - 40),
+            centerY + Math.sin(angle) * (radius - 40)
+        );
+        ctx.rotate(angle + Math.PI/2);
+        ctx.font = "14px Arial";
+        ctx.fillStyle = "black";
+        ctx.textAlign = "center";
+        ctx.fillText(value, 0, 5);
+        ctx.restore();
+    }
+
+    // Aiguille physique réaliste
+    const needleAngle = 0.3 * Math.PI + powerRatio * angleRange;
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(needleAngle);
+    
+    // Corps de l'aiguille (triangle)
+    ctx.beginPath();
+    ctx.moveTo(-15, -3);
+    ctx.lineTo(radius * 0.85, 0);
+    ctx.lineTo(-15, 3);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.9)';
+    ctx.fill();
+
+    // Pivot central
+    ctx.beginPath();
+    ctx.arc(0, 0, 5, 0, 2 * Math.PI);
+    ctx.fillStyle = '#222';
+    ctx.fill();
+    ctx.restore();
+
+    // Affichage numérique (ajout d'effets)
+    ctx.font = "24px Arial";
+    ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+    ctx.fillText(`${(clampedPower/1000).toFixed(1)} kW`, centerX, centerY + 50);
+
+    // Mise à jour de la texture
+    galvanometerTexture.needsUpdate = true;
+}
+
+
+function calculateCutInSpeed(bladeLength) {
+    const baseCutIn = 3.0; // m/s (pour bladeLength de référence)
+    const referenceLength = 50; // m (longueur de référence)
+    return 3;
+    return baseCutIn * Math.sqrt( bladeLength / referenceLength);
 }

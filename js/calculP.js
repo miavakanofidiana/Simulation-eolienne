@@ -38,7 +38,9 @@ let typingInterval;
             // Calcul
             S = Math.PI*Math.pow(bladeLength, 2);
             v3 = Math.pow(v, 3);
-            power = (1/2)*rho*S*v3;
+            max_power = calculateMaxPower(windSpeedNominal);
+            cutIn = calculateCutInSpeed(bladeLength);
+            power = calculatePower(v, cutIn, windSpeedNominal, 25, max_power);
             power_ = power.toFixed(0);
             if (powerUnit == "kW") {
                 power /= 1000;
@@ -48,21 +50,21 @@ let typingInterval;
                 power_ = power.toFixed(3);
             }
 
-            max_power = power * 16/27;
+            rec_power = power * (rendement/100);
             
             if (powerUnit == "W") {
-                max_power_ = max_power.toFixed(0);
+                rec_power_ = rec_power.toFixed(0);
             } else if (powerUnit == "kW") {
-                max_power_ = max_power.toFixed(3)
+                rec_power_ = rec_power.toFixed(3)
             } else if (powerUnit == "MW") {
-                max_power_ = max_power.toFixed(3);
+                rec_power_ = rec_power.toFixed(3);
             }
 
-            max_power_text = Number.parseFloat(max_power_).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' '+powerUnit;
+            rec_power_text = Number.parseFloat(rec_power_).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' '+powerUnit;
 
             power_text = Number.parseFloat(power_).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' '+powerUnit;
             if (!calculationIsVisible()) {
-                showSceneTexts(power_text, max_power_text);
+                showSceneTexts(power_text, rec_power_text);
                 return;
             }
 
@@ -92,10 +94,17 @@ let typingInterval;
                 text += (`<p>     = (1/2)·ρ·(π·L²)·v³</p>`);
                 text += (`<p>     = (1/2)·(${rho})·(π·${L}²)·(${v}³)</p>`);
                 text += (`<p style='border: 1px solid black;'> P<sub>TH</sub> = ${power_text}</p>`);
-                text += (`<p style='font-weight:bold;text-decoration: underline;'>Puissance maximale</p>`);
-                text += (`<p style='border: 1px solid black;'> P<sub>MAX</sub>  = 16/27.P<sub>TH</sub> (Loi de Betz)</p>`);
-                text += (`<p>       = 0,593.${power_text}</p>`);
-                text += (`<p style='border: 1px solid black;'> P<sub>MAX</sub> = ...</p>`);
+                text += (`<p style='font-weight:bold;text-decoration: underline;'>Puissance récupérable</p>`);
+                if (rendement == 59) {
+                    text += (`<p style='border: 1px solid black;'> P<sub>MAX</sub>  = 16/27.P<sub>TH</sub> (Loi de Betz)</p>`);
+                    text += (`<p>       = (0,59).(${power_text})</p>`);
+                    text += (`<p style='border: 1px solid black;'> P<sub>MAX</sub> = ...</p>`);
+                } else {
+                    text += (`<p style='border: 1px solid black;'> P<sub>réc</sub>  = r.P<sub>TH</sub></p>`);
+                    text += (`<p>       = (${(rendement/100)}).(${power_text})</p>`);
+                    text += (`<p style='border: 1px solid black;'> P<sub>réc</sub> = ...</p>`);
+                }
+                
             }
 
             text = formatLine(text, L, v, rho);
@@ -122,7 +131,7 @@ let typingInterval;
                     }
                     // Affiche le contenu brut TEMPORAIREMENT
                     resultDiv.innerHTML = buffer + "█"; // Curseur clignotant stylisable en CSS
-                    //MathJax.typesetPromise(); // Recompile le contenu mathématique
+                    MathJax.typesetPromise(); // Recompile le contenu mathématique
                 } else {
                     clearInterval(typingInterval);
                     
@@ -133,7 +142,7 @@ let typingInterval;
 						
                     }, 100);
                 }
-            }, 50);
+            }, 30);
         }
 
         function formatLine(content, L, v, rho) {
@@ -182,7 +191,6 @@ let typingInterval;
             pMaxTextMesh.position.set(-14, -20, 3);
             scene.add(pMaxTextMesh);
         }
-
         
 		
 document.onreadystatechange = function (e) {

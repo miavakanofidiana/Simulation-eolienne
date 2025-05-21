@@ -22,7 +22,7 @@ async function generateCourbePuissance() {
     if(isAnimating) return;
     isAnimating = true;
     
-    cutIn = 3; // Vitesse de démarrage
+    cutIn = calculateCutInSpeed(bladeLength); // Vitesse de démarrage
     ratedSpeed = windSpeedNominal;
     cutOut = 25; // Vitesse d'arrêt
     maxY = calculateMaxPower(ratedSpeed);
@@ -71,9 +71,9 @@ async function generateCourbePuissance() {
 function createDataPoint(v, cutIn, ratedSpeed, cutOut, maxY) {
     return {
         v,
-        power: calculatePower(v, cutIn, ratedSpeed, cutOut, maxY),
+        power: calculateRecPower(v, cutIn, ratedSpeed, cutOut, maxY),
         x: 40 + (v/maxX * (canvas.width - 60)),
-        y: canvas.height - 40 - (calculatePower(v, cutIn, ratedSpeed, cutOut, maxY)/maxY * (canvas.height - 80))
+        y: canvas.height - 40 - (calculateRecPower(v, cutIn, ratedSpeed, cutOut, maxY)/maxY * (canvas.height - 80))
     };
 }
 
@@ -86,14 +86,24 @@ function calculateMaxPower(ratedSpeed) {
     } else if (powerUnit == "MW") {
         p /= 1000000;
     }
-    p = p*16/27;
+    p = p*(rendement/100);
     return p;
+}
+
+function calculateRecPower(v, cutIn, ratedSpeed, cutOut, maxPower) {
+    return calculatePower(v, cutIn, ratedSpeed, cutOut, maxPower)*(rendement/100);
 }
 
 function calculatePower(v, cutIn, ratedSpeed, cutOut, maxPower) {
     if(v < cutIn) return 0;
-    if(v < ratedSpeed) return maxPower * Math.pow((v - cutIn)/(ratedSpeed - cutIn), 3);
-    if(v <= cutOut) return maxPower;
+    c_power = (1/2)*rho*S*Math.pow(v, 3);
+    if (powerUnit == "kW") {
+        c_power /= 1000;
+    } else if (powerUnit == "MW") {
+        c_power /= 1000000;
+    }
+    if(v < ratedSpeed) return c_power;
+    if(v <= cutOut) return maxPower*100/rendement;
     return 0;
 }
 
@@ -198,7 +208,7 @@ async function drawProjectionLines(point, lines) {
     switch(powerUnit) {
         case "kW": 
         case "MW": 
-            pointPower = point.power.toFixed(3);
+            pointPower = point.power.toFixed(2);
             break;
         case "W": 
             pointPower = point.power.toFixed(0);
@@ -207,7 +217,7 @@ async function drawProjectionLines(point, lines) {
 
     overlayCtx.fillText(
         `${pointPower} ${powerUnit}`,
-        50,
+        100,
         point.y - 10
     );
 
@@ -252,23 +262,50 @@ function animateDashedLines(lines) {
 }
 
 function drawGrid() {
-    ctx.strokeStyle = '#eee';
+    ctx.strokeStyle = '#555';
     ctx.lineWidth = 0.5;
     
-    // Grille verticale
-    for(let x = 50; x < canvas.width; x += 50) {
+    // Carreaux verticaux (tous les 1 m/s)
+    for(let v = 0; v <= maxX; v += 1) {
+        const x = 40 + (v/maxX * (canvas.width - 60));
         ctx.beginPath();
         ctx.moveTo(x, 0);
         ctx.lineTo(x, canvas.height - 40);
         ctx.stroke();
     }
 
-    // Grille horizontale
-    for(let y = 50; y < canvas.height; y += 50) {
+    // Carreaux horizontaux (tous les 10% de maxY)
+    for(let p = 0; p <= maxY+(maxY/5); p += maxY/10) {
+        const y = canvas.height - 40 - (p/maxY * (canvas.height - 80));
         ctx.beginPath();
         ctx.moveTo(40, y);
         ctx.lineTo(canvas.width, y);
         ctx.stroke();
+    }
+
+    // Style des lignes principales plus épaisses
+    ctx.strokeStyle = '#ddd';
+    ctx.lineWidth = 1;
+    
+    // Lignes verticales principales (tous les 5 m/s)
+    for(let v = 0; v <= maxX; v += 5) {
+        const x = 40 + (v/maxX * (canvas.width - 60));
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height - 40);
+        ctx.stroke();
+    }
+
+    // Mise en évidence de la zone nominale
+    if(ratedSpeed && false) {
+        ctx.fillStyle = 'rgba(46, 204, 113, 0.1)';
+        const startX = 40 + (ratedSpeed/maxX * (canvas.width - 60));
+        ctx.fillRect(
+            startX,
+            0,
+            canvas.width - startX-20,
+            canvas.height - 40
+        );
     }
 }
 
@@ -290,27 +327,92 @@ function drawAxes() {
 
     // Étiquettes
     ctx.fillStyle = '#000';
-    ctx.font = '12px Arial';
+    ctx.font = '11px Arial';
     
     // Échelle Y
-    for(let i = 0; i <= maxY; i += maxY/5) {
+    for(let i = 0; i <= maxY+(maxY/5); i += maxY/5) {
         switch(powerUnit) {
-            case "kW": 
+            case "kW": {
+                i_power = i.toFixed(2);
+                break;
+            }
             case "MW": {
-                i_power = i.toFixed(3);
+                i_power = i.toFixed(2);
                 break;
             }
             case "W": {
                 i_power = Math.round(i);
             }
         }
+        i_power = i_power.toLocaleString('fr-FR').replace('.', ',');
         const y = canvas.height - 40 - (i/maxY * (canvas.height - 80));
-        ctx.fillText(`${i_power} ${powerUnit}`, 5, y + 5);
+        ctx.fillText(`${i_power}`, 2, y + 5); // Décaler de 5 → 2
     }
 
-    // Échelle X
-    for(let v = 0; v <= maxX; v += 5) {
-        const x = 40 + (v/maxX * (canvas.width - 60));
-        ctx.fillText(`${v} m/s`, x - 15, canvas.height - 25);
+    // Échelle X avec plus de graduations
+    const xStep = maxX > 25 ? 5 : 1; // Adapte le pas selon la plage
+    for(let v = 0; v <= maxX; v += xStep) {
+        const x = 47 + (v/maxX * (canvas.width - 60));
+        
+        // Style différent pour les demi-valeurs
+        if(v % 5 !== 0) {
+            ctx.fillStyle = '#666';
+            ctx.font = '10px Arial';
+        } else {
+            ctx.fillStyle = '#000';
+            ctx.font = '12px Arial';
+        }
+        
+        ctx.fillText(
+            `${v.toFixed(v % 1 === 0 ? 0 : 1)}`, 
+            x - (v < 10 ? 10 : 15), 
+            canvas.height - 25
+        );
     }
+
+    // Marqueurs secondaires pour l'axe Y (tous les 10% de maxY)
+    ctx.strokeStyle = '#ccc';
+    ctx.lineWidth = 0.5;
+    for(let i = 0; i <= maxY; i += maxY/20) { // Pas de 5% au lieu de 20%
+        const y = canvas.height - 40 - (i/maxY * (canvas.height - 80));
+        ctx.beginPath();
+        ctx.moveTo(38, y); // Départ légèrement à gauche de l'axe
+        ctx.lineTo(42, y); // Ligne courte de 4px
+        ctx.stroke();
+    }
+
+    // Ajout de marqueurs secondaires
+    ctx.strokeStyle = '#999';
+    ctx.lineWidth = 0.5;
+    for(let v = 0; v <= maxX; v += 1) {
+        const x = 40 + (v/maxX * (canvas.width - 60));
+        ctx.beginPath();
+        ctx.moveTo(x, canvas.height - 45);
+        ctx.lineTo(x, canvas.height - 35);
+        ctx.stroke();
+    }
+
+    // Ajouter les libellés d'axes avec unités
+    ctx.save();
+    ctx.fillStyle = '#000';
+    ctx.font = '14px Arial';
+    
+    // Libellé axe Y (Puissance)
+    ctx.save();
+    ctx.fillStyle = '#000';
+    ctx.font = '14px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Ajuster la position (-30 décalage vertical, 20 marge gauche)
+    ctx.translate(25, canvas.height / 2); // Déplacer vers la droite
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(`Puissance (${powerUnit})`, 0, 30); // Décalage vertical
+    
+    ctx.restore();
+
+    // Libellé axe X (Vitesse)
+    ctx.fillText('Vitesse du vent (m/s)', canvas.width/2 - 60, canvas.height - 10);
+    
+    ctx.restore();
 }

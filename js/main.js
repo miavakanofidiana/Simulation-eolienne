@@ -2,8 +2,10 @@ let windSpeed = 5; // m/s
 let bladeLength = 50; // m
 let powerUnit = 'W';
 let bladeLengthSimul = bladeLength/2;
+let rendement = 30;
+const GEOMETRY_SEGMENTS = 16;
 const windSpeedHighNorm = 25; // Norme supérieure de la vitesse du vent en m/s
-const windSpeedLowNorm = 3; // Norme inférieure de la vitesse du vent en m/s
+let windSpeedLowNorm = 3; // Norme inférieure de la vitesse du vent en m/s
 
 const alertHigh = document.getElementById('alertHigh');
 const alertLow = document.getElementById('alertLow');
@@ -49,7 +51,8 @@ const pMaxColor = 0xFF0000;
 
 let arbreLentActive = true, windActive = true, palesActive = true, multiplicateurActive = true, alternateurActive = true;
 
-
+let galvanometerCanvas, galvanometerCtx, galvanometerTexture, galvanometerMesh;
+const GALVANO_SIZE = 40; // Taille dans la scène 3D
 
 let bladeAngle = 0;
 let shaftAngle = 0;
@@ -197,7 +200,7 @@ function init() {
     palesLegende.position.set(leg_x+10, leg_y, leg_z);
 
     // Création de la géométrie du disque
-    const diskLGeometry = new THREE.CircleGeometry(3, 32); // 32 segments pour une forme lisse
+    const diskLGeometry = new THREE.CircleGeometry(3, GEOMETRY_SEGMENTS);
     // Création d'un matériau semi-transparent pour le disque
     const diskLMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff, transparent: true, opacity: 0.0 });
 
@@ -211,7 +214,7 @@ function init() {
     scene.add(diskL);
 
     //Arbre lent
-    const shaftGeometryL = new THREE.CylinderGeometry(0.5, 0.5, 1.6, 32);
+    const shaftGeometryL = new THREE.CylinderGeometry(0.5, 0.5, 1.6, GEOMETRY_SEGMENTS);
     const shaftMaterialL = new THREE.MeshPhongMaterial({ color: 0x0000ff });
     const shaftL = new THREE.Mesh(shaftGeometryL, shaftMaterialL);
     shaftL.position.set(leg_x, leg_y-leg_dist, leg_z);
@@ -286,7 +289,7 @@ function init() {
     scene.add(alternateurL);
 
     // Create shaft of alternator
-    const shaft3GeometryL = new THREE.CylinderGeometry(0.5, 0.5, 1.2, 32);
+    const shaft3GeometryL = new THREE.CylinderGeometry(0.5, 0.5, 1.2, GEOMETRY_SEGMENTS);
     const shaft3L = new THREE.Mesh(shaft3GeometryL, alternatorMaterial);
     shaft3L.position.set(leg_x, leg_y-leg_dist*3, leg_z);
     shaft3L.rotation.z = Math.PI / 2;
@@ -295,7 +298,7 @@ function init() {
 
 
     // Create cylinder of alternator
-    const shaft4GeometryL = new THREE.CylinderGeometry(1.2, 1.2, 2, 32);
+    const shaft4GeometryL = new THREE.CylinderGeometry(1.2, 1.2, 2, GEOMETRY_SEGMENTS);
     const shaft4L = new THREE.Mesh(shaft4GeometryL, alternatorMaterial);
     shaft4L.position.set(leg_x+1, leg_y-leg_dist*3, leg_z);
     shaft4L.rotation.z = Math.PI / 2;
@@ -399,7 +402,7 @@ function init() {
     scene.add(nacelle0);
 
     // Create shaft blue
-    const shaftGeometry = new THREE.CylinderGeometry(0.5, 0.5, 3.9, 32);
+    const shaftGeometry = new THREE.CylinderGeometry(0.5, 0.5, 3.9, GEOMETRY_SEGMENTS);
     const shaftMaterial = new THREE.MeshPhongMaterial({ color: 0x0000ff });
     shaft = new THREE.Mesh(shaftGeometry, shaftMaterial);
     shaft.position.set(3.5, towerSize, 0);
@@ -420,7 +423,7 @@ function init() {
 
 
     // Create shaft of gearbox
-    const shaft2Geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
+    const shaft2Geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, GEOMETRY_SEGMENTS);
     const shaft2Material = new THREE.MeshLambertMaterial({ color: 0xffff00 });
     shaft2 = new THREE.Mesh(shaft2Geometry, shaft2Material);
     shaft2.position.set(5, towerSize, 0);
@@ -439,7 +442,7 @@ function init() {
     scene.add(alternateur);
 
     // Create shaft of alternator
-    const shaft3Geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
+    const shaft3Geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, GEOMETRY_SEGMENTS);
     shaft3 = new THREE.Mesh(shaft3Geometry, alternatorMaterial);
     shaft3.position.set(7, towerSize, 0);
     shaft3.rotation.z = Math.PI / 2;
@@ -448,7 +451,7 @@ function init() {
 
 
     // Create cylinder of alternator
-    const shaft4Geometry = new THREE.CylinderGeometry(1.2, 1.2, 2, 32);
+    const shaft4Geometry = new THREE.CylinderGeometry(1.2, 1.2, 2, GEOMETRY_SEGMENTS);
     shaft4 = new THREE.Mesh(shaft4Geometry, alternatorMaterial);
     shaft4.position.set(8, towerSize, 0);
     shaft4.rotation.z = Math.PI / 2;
@@ -490,7 +493,7 @@ function init() {
     scene.add(transformer);
 
     // Ajouter un réservoir d'huile sur le dessus du transformateur
-    const tankGeometry = new THREE.CylinderGeometry(0.8, 0.8, 2, 32);
+    const tankGeometry = new THREE.CylinderGeometry(0.8, 0.8, 2, GEOMETRY_SEGMENTS);
     const tankMaterial = new THREE.MeshLambertMaterial({ color: 0x95A5A6 });
     const tank = new THREE.Mesh(tankGeometry, tankMaterial);
     tank.rotation.z = Math.PI / 2;
@@ -549,6 +552,32 @@ function init() {
 
     // FIN VILLAGE
 
+    // DEBUT GALVANO
+    // Création du canvas pour le galvanomètre
+    galvanometerCanvas = document.createElement('canvas');
+    galvanometerCanvas.width = 512;
+    galvanometerCanvas.height = 512;
+    galvanometerCtx = galvanometerCanvas.getContext('2d');
+
+    // Création de la texture Three.js
+    galvanometerTexture = new THREE.CanvasTexture(galvanometerCanvas);
+    
+    // Création du mesh 3D
+    const material = new THREE.MeshBasicMaterial({ 
+        map: galvanometerTexture,
+        transparent: true,
+        side: THREE.DoubleSide
+    });
+    const galva_geometry = new THREE.PlaneGeometry(GALVANO_SIZE, GALVANO_SIZE);
+    galvanometerMesh = new THREE.Mesh(galva_geometry, material);
+    
+    // Positionnement dans la scène
+    galvanometerMesh.position.set(-10, -20, 3);
+    // galvanometerMesh.rotation.y = Math.PI/2; // Orientation face à la caméra
+    scene.add(galvanometerMesh);
+
+    // FIN Galvano
+
    
 
     // DEBUT CurveGeometry
@@ -587,6 +616,7 @@ function updateSimulation() {
     powerUnit = document.getElementById('powerUnit').value;
     bladeLengthSimul = bladeLength/2;
     temperature = parseFloat(document.getElementById('temperature').value);
+    rendement = parseFloat(document.getElementById('rendement').value);
     // Exemple d'utilisation avec une température de 25°C
     updateSkyColor(temperature, scene);
     
@@ -654,8 +684,6 @@ function updateSimulation() {
         power /= coeff;
         coeff = 1;
     }
-
-    max_power = power*16/27;
     vitesse_angulaire_multip = w*coeff;
 
     nombre_tour_par_seconde_pales = w/(2*Math.PI);
@@ -696,7 +724,9 @@ function updateSimulation() {
     
 
 
+    rendementText = (rendement == 59) ? "Max" : `${rendement} %`;
     document.getElementById('bladeLengthCaption').innerHTML = "L="+bladeLength+" m";
+    document.getElementById('rendementCaption').innerHTML = `r=${rendementText}`;
     document.getElementById('densityCaption').innerHTML = "ρ="+rho+" kg/m<sup>3</sup>";
     document.getElementById('temperatureCaption').innerHTML = ""+temperature+" °C";
     document.getElementById('windSpeedCaption').innerHTML = "v<sub>vent</sub>="+windSpeed+" m/s";
@@ -710,40 +740,6 @@ function updateSimulation() {
     } else if (powerUnit == "MW") {
         power_ = power.toFixed(3);
     }
-    /* const ptTextGeometry = new TextGeometry(Number.parseFloat(power_).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' '+powerUnit, {
-        font: TimesFont,
-        size: 2,
-        depth: 0.1,
-        curveSegments: 32,
-        bevelEnabled: false,
-        bevelThickness: 0.5,
-        bevelSize: 0.5,
-        bevelSegments: 1,
-    }); */
-
-    // Create a standard material with 50% gloss
-    const ptTextMaterial = new THREE.MeshStandardMaterial({
-        color: pth_color,
-        roughness: 0.1
-    });
-    if (powerUnit == "W") {
-        max_power_ = max_power.toFixed(0);
-    } else if (powerUnit == "kW") {
-        max_power_ = max_power.toFixed(3)
-    } else if (powerUnit == "MW") {
-        max_power_ = max_power.toFixed(3);
-    }
-    
-    /* const pMaxTextGeometry = new TextGeometry(Number.parseFloat(max_power_).toLocaleString('fr-FR').replace(/\s/g, ' ') + ' '+powerUnit, {
-        font: TimesFont,
-        size: 2,
-        depth: 0.1,
-        curveSegments: 32,
-        bevelEnabled: false,
-        bevelThickness: 0.5,
-        bevelSize: 0.5,
-        bevelSegments: 1,
-    }); */
 
     // Create a standard material with 50% gloss
     const pMaxTextMaterial = new THREE.MeshStandardMaterial({
@@ -876,12 +872,12 @@ function updateSimulation() {
         blades.children.forEach((blade, i) => {
             blade.geometry = bladeGeom;
         });
-        bladesCylinderGeometry = new THREE.CylinderGeometry(bladeLengthSimul, bladeLengthSimul, 7, 32); // 32 segments pour une forme lisse
+        bladesCylinderGeometry = new THREE.CylinderGeometry(bladeLengthSimul, bladeLengthSimul, 7, GEOMETRY_SEGMENTS); // 32 segments pour une forme lisse
         bladesCylinder.geometry = bladesCylinderGeometry;
         blades0.children.forEach((blade, i) => {
             blade.geometry = bladeGeom;
         });
-        diskGeometry = new THREE.CircleGeometry(bladeLengthSimul, 32); // 32 segments pour une forme lisse
+        diskGeometry = new THREE.CircleGeometry(bladeLengthSimul, GEOMETRY_SEGMENTS); // 32 segments pour une forme lisse
         disk.geometry=diskGeometry;
         lastBladesLength = bladeLength;
     }
@@ -913,11 +909,30 @@ function updateSimulation() {
         particles.push(particle);
         scene.add(particle);
     }
+
+    
+
+    max_power = calculateMaxPower(windSpeedNominal);
+    cutIn = calculateCutInSpeed(bladeLength);
+    windSpeedLowNorm = cutIn;
+    power_rec = calculateRecPower(windSpeed, cutIn, windSpeedNominal, 25, max_power);
+
+    drawGalvanometer(power_rec, max_power);
 }
 
 
 last_timestamp = 0;
+let animationFrameId;
+const FPS_LIMIT = 30; // Limiter à 30 FPS
+let lastRender = 0;
+
 function animate(timestamp) {
+    if(timestamp - lastRender < 1000/FPS_LIMIT) {
+        animationFrameId = requestAnimationFrame(animate);
+        return;
+    }
+    lastRender = timestamp;
+
     if (isContextLost) return;
     deltaTime = (timestamp - last_timestamp)*0.001;
     last_timestamp = timestamp;
@@ -1019,7 +1034,12 @@ function animate(timestamp) {
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
+// Limiter les vérifications à 5 FPS
+let lastCheck = 0;
 function onMouseClick(event) {
+    if(Date.now() - lastCheck < 200) return;
+    lastCheck = Date.now();
+
     // Calculer la position de la souris en coordonnées normalisées pour Three.js
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -1061,5 +1081,8 @@ document.addEventListener('click', (event) => {
         tooltip.style.display = 'none';
     }
 });
+// Arrêter l'animation quand inactif
+// window.addEventListener('blur', () => cancelAnimationFrame(animationFrameId));
+// window.addEventListener('focus', () => animate());
 
 init();

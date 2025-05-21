@@ -323,7 +323,7 @@
                     <label>Vitesse nominale <span id="windSpeedNominalCaption"></span></label>
                     <div class="slider-container">
                         <button class="btn-sm" onclick="adjustValue('windSpeedNominal', -0.5)">-</button>
-                        <input type="range" id="windSpeedNominal" value="12" min="12" max="15" step="0.5" oninput="updateSimulation();updateCalculation();generateCourbePuissance();">
+                        <input type="range" id="windSpeedNominal" value="12" min="12" max="25" step="0.5" oninput="updateSimulation();updateCalculation();generateCourbePuissance();">
                         <button class="btn-sm" onclick="adjustValue('windSpeedNominal', 0.5)">+</button>
                     </div>
                 </div>
@@ -334,6 +334,15 @@
                         <button class="btn-sm" onclick="adjustValue('bladeLength', -5)">-</button>
                         <input type="range" id="bladeLength" value="30" min="5" max="50" step="5" oninput="updateSimulation();updateCalculation();generateCourbePuissance();">
                         <button class="btn-sm" onclick="adjustValue('bladeLength', 5)">+</button>
+                    </div>
+                </div>
+
+                <div class="control">
+                    <label>Rendement <span id="rendementCaption"></span></label>
+                    <div class="slider-container">
+                        <button class="btn-sm" onclick="adjustValue('rendement', -1)">-</button>
+                        <input type="range" id="rendement" value="30" min="20" max="59" step="1" oninput="updateSimulation();updateCalculation();generateCourbePuissance();">
+                        <button class="btn-sm" onclick="adjustValue('rendement', 1)">+</button>
                     </div>
                 </div>
             </div>
@@ -483,6 +492,7 @@
     <script src="js/main.js"></script>
     <script src="js/calculP.js"></script>
     <script src="js/drag.js"></script>
+    <script src="js/mathjax/tex-mml-chtml.js"></script>
 
     <script>
         function adjustValue(elementId, increment) {
@@ -490,6 +500,9 @@
             input.value = parseFloat(input.value) + increment;
             updateSimulation();
             updateCalculation();
+            if (elementId != 'windSpeed') {
+                generateCourbePuissance();
+            }
         }
     </script>
 </body>
